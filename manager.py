@@ -1,214 +1,68 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from collections.abc import Sequence
 
 from rich.console import Console
+from agents import Runner, gen_trace_id, trace
 
-from agents import Runner, RunResult, custom_span, gen_trace_id, trace
-
-from .agents.financials_agent import financials_agent
-from .agents.planner_agent import (
-    FinancialSearchItem,
-    FinancialSearchPlan,
-    planner_agent,
-)
-from .agents.risk_agent import risk_agent
-from .agents.search_agent import search_agent
-from .agents.search_critic_agent import FinanicalSearchItemCritique, search_critic_agent
-from .agents.verifier_agent import VerificationResult, verifier_agent
-from .agents.writer_agent import FinancialReportData, writer_agent
-from .printer import Printer
+from .planner_agent import SearchItem, SearchPlan, planner_agent
+from .search_agent import search_agent
+from .search_critic import SearchItemCritique, search_critic_agent
 
 
-async def _summary_extractor(run_result: RunResult) -> str:
-    """Custom output extractor for sub‑agents that return an AnalysisSummary."""
-    # The financial/risk analyst agents emit an AnalysisSummary with a `summary` field.
-    # We want the tool call to return just that summary text so the writer can drop it inline.
-    return str(run_result.final_output.summary)
-
-
-class FinancialResearchManager:
-    """
-    Orchestrates the full flow: planning, searching, sub‑analysis, writing, and verification.
-    """
+class WebSearchManager:
+    """Coordinates planning, searching and critique for generic web searches."""
 
     def __init__(self) -> None:
         self.console = Console()
-        self.printer = Printer(self.console)
 
     async def run(self, query: str) -> None:
         trace_id = gen_trace_id()
-        with trace("Financial research trace", trace_id=trace_id):
-            self.printer.update_item(
-                "trace_id",
-                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
-                is_done=True,
-                hide_checkmark=True,
-            )
-            self.printer.update_item(
-                "start", "Starting financial research...", is_done=True
-            )
-            search_plan = await self._plan_searches(query)
-            search_results = await self._perform_searches(query, search_plan)
-            report = await self._write_report(query, search_results)
-            verification = await self._verify_report(report)
+        with trace("web search trace", trace_id=trace_id):
+            self.console.print(f"Planning searches for: {query}")
+            plan = await self._plan_searches(query)
+            results = await self._perform_searches(query, plan)
 
-            final_report = f"Report summary\n\n{report.short_summary}"
-            self.printer.update_item("final_report", final_report, is_done=True)
+        for item, text in results:
+            self.console.print(f"\n# {item.query}\n{text}\n")
 
-            self.printer.end()
-
-        # Print to stdout
-        print("\n\n=====REPORT=====\n\n")
-        print(f"Report:\n{report.markdown_report}")
-        print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
-        print("\n".join(report.follow_up_questions))
-        print("\n\n=====VERIFICATION=====\n\n")
-        print(verification)
-
-    async def _plan_searches(self, query: str) -> FinancialSearchPlan:
-        self.printer.update_item("planning", "Planning searches...")
+    async def _plan_searches(self, query: str) -> SearchPlan:
         result = await Runner.run(planner_agent, f"Query: {query}")
-        self.printer.update_item(
-            "planning",
-            f"Will perform {len(result.final_output.searches)} searches",
-            is_done=True,
-        )
-        # Print the search plan
-        for i, item in enumerate(result.final_output.searches):
-            self.printer.update_item(
-                f"search_{i}",
-                f"Search term: {item.query}\nReason: {item.reason}",
-                is_done=True,
-            )
-        return result.final_output_as(FinancialSearchPlan)
+        return result.final_output_as(SearchPlan)
 
     async def _perform_searches(
-        self, query: str, search_plan: FinancialSearchPlan
-    ) -> Sequence[str]:
-        results: list[tuple[FinancialSearchItem, str]] = []
-        with custom_span("Search the web"):
-            self.printer.update_item("searching", "Searching...")
-            tasks = [
-                asyncio.create_task(self._search(item)) for item in search_plan.searches
-            ]
-            num_completed = 0
-            for task in asyncio.as_completed(tasks):
-                result = await task
-                if result is not None:
-                    results.append(result)
-                num_completed += 1
-                self.printer.update_item(
-                    "searching", f"Searching... {num_completed}/{len(tasks)} completed"
-                )
-            self.printer.update_item("refining", "Refining search results...")
-            tasks = [
-                asyncio.create_task(
-                    self._refine_search_result(query, item, search_result)
-                )
-                for (item, search_result) in results
-            ]
-            results = []
-            num_completed = 0
-            for i, task in enumerate(asyncio.as_completed(tasks)):
-                result = await task
-                if result is not None:
-                    results.append(result)
-                num_completed += 1
-                self.printer.update_item(
-                    "refining", f"Refining... {i+1}/{len(tasks)} completed"
-                )
-            self.printer.update_item(
-                "refining",
-                f"Refined {len(results)} search results",
-                is_done=True,
-            )
-            self.printer.mark_item_done("searching")
-        return [search_result for (_, search_result) in results]
+        self, query: str, search_plan: SearchPlan
+    ) -> Sequence[tuple[SearchItem, str]]:
+        tasks = [asyncio.create_task(self._search_and_refine(query, item)) for item in search_plan.searches]
+        results: list[tuple[SearchItem, str]] = []
+        for task in asyncio.as_completed(tasks):
+            res = await task
+            if res is not None:
+                results.append(res)
+        return results
 
-    async def _refine_search_result(
-        self, query: str, item: FinancialSearchItem, search_result: str
-    ) -> tuple[FinancialSearchItem, str] | None:
+    async def _search_and_refine(
+        self, query: str, item: SearchItem
+    ) -> tuple[SearchItem, str] | None:
+        result = await self._search(item)
+        if result is None:
+            return None
+        item, search_result = result
         input_data = f"Original query: {query}\nSearch terms: {item.query}\nSearch result: {search_result}"
-        result = await Runner.run(search_critic_agent, input_data)
-        critique: FinanicalSearchItemCritique = result.final_output
-        if critique.is_good_enough:
-            self.printer.update_item(
-                f"search_{str(item)}",
-                f"{item.query} is good enough",
-                is_done=True,
-            )
-            return (item, search_result)
-        else:
-            # Need to do a new search with the revised query
-            self.printer.update_item(
-                f"search_{str(item)}",
-                f"{item.query} is not good enough, revising to {critique.revised_query}",
-                is_done=True,
-            )
-            assert critique.revised_query is not None
-            return await self._search(
-                FinancialSearchItem(
-                    reason=critique.critique or "No critique provided",
-                    query=critique.revised_query,
-                )
-            )
+        critique_result = await Runner.run(search_critic_agent, input_data)
+        critique: SearchItemCritique = critique_result.final_output
+        if critique.is_good_enough or not critique.revised_query:
+            return item, search_result
+        return await self._search(SearchItem(reason=critique.critique or "revised", query=critique.revised_query))
 
     async def _search(
-        self, item: FinancialSearchItem
-    ) -> tuple[FinancialSearchItem, str] | None:
+        self, item: SearchItem
+    ) -> tuple[SearchItem, str] | None:
         input_data = f"Search term: {item.query}\nReason: {item.reason}"
         try:
             result = await Runner.run(search_agent, input_data)
-            return (item, str(result.final_output))
+            return item, str(result.final_output)
         except Exception as e:
-            self.printer.update_item(
-                f"search_{str(item)}",
-                f"Search term: {item.query} failed with error: {e}",
-                is_done=True,
-            )
+            self.console.print(f"Search '{item.query}' failed: {e}")
             return None
-
-    async def _write_report(
-        self, query: str, search_results: Sequence[str]
-    ) -> FinancialReportData:
-        # Expose the specialist analysts as tools so the writer can invoke them inline
-        # and still produce the final FinancialReportData output.
-        fundamentals_tool = financials_agent.as_tool(
-            tool_name="fundamentals_analysis",
-            tool_description="Use to get a short write‑up of key financial metrics",
-            custom_output_extractor=_summary_extractor,
-        )
-        risk_tool = risk_agent.as_tool(
-            tool_name="risk_analysis",
-            tool_description="Use to get a short write‑up of potential red flags",
-            custom_output_extractor=_summary_extractor,
-        )
-        writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
-        self.printer.update_item("writing", "Thinking about report...")
-        input_data = (
-            f"Original query: {query}\nSummarized search results: {search_results}"
-        )
-        result = Runner.run_streamed(writer_with_tools, input_data)
-        update_messages = [
-            "Planning report structure...",
-            "Writing sections...",
-            "Finalizing report...",
-        ]
-        last_update = time.time()
-        next_message = 0
-        async for _ in result.stream_events():
-            if time.time() - last_update > 5 and next_message < len(update_messages):
-                self.printer.update_item("writing", update_messages[next_message])
-                next_message += 1
-                last_update = time.time()
-        self.printer.mark_item_done("writing")
-        return result.final_output_as(FinancialReportData)
-
-    async def _verify_report(self, report: FinancialReportData) -> VerificationResult:
-        self.printer.update_item("verifying", "Verifying report...")
-        result = await Runner.run(verifier_agent, report.markdown_report)
-        self.printer.mark_item_done("verifying")
-        return result.final_output_as(VerificationResult)

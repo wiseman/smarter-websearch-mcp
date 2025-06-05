@@ -1,6 +1,4 @@
-# Compute today's date in YYYY-MM-DD format
 from datetime import datetime
-
 from pydantic import BaseModel
 
 from . import make_agent
@@ -8,29 +6,25 @@ from . import make_agent
 today = datetime.today().strftime("%Y-%m-%d")
 
 PROMPT = (
-    "You critique search plans that are meant to gather relevant information for"
-    "financial analysis. Given a topic, a search query, and the search results, "
-    "you decide whether the search was successful or needs to be revised to get "
-    "better results. "
+    "You critique search results. Given a topic, a search query and the search results, "
+    "decide whether the search was successful or if the query should be revised. "
     f"Additional info: today is {today}."
 )
 
 
-class FinanicalSearchItemCritique(BaseModel):
+class SearchItemCritique(BaseModel):
     is_good_enough: bool
     """Whether the search terms were good enough to get useful results."""
 
     critique: str | None = None
-    """If the search was not successful, explain what the problem was and how
-    to fix it by modifying the search terms."""
+    """If the search was not successful, explain the problem and suggest improvements."""
 
     revised_query: str | None = None
-    """If the search was not successful, suggest 5-15 revised search terms."""
+    """If the search was not successful, provide revised search terms."""
 
 
 search_critic_agent = make_agent(
-    name="FinancialPlanCriticAgent",
+    name="SearchPlanCriticAgent",
     instructions=PROMPT,
-    # model="o3-mini",
-    output_type=FinanicalSearchItemCritique,
+    output_type=SearchItemCritique,
 )
