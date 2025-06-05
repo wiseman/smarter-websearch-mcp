@@ -13,6 +13,8 @@ It utilizes an AI agentic workflow to refine search queries and process results.
 
 ## Prerequisites
 
+This project uses `pyproject.toml` for defining dependencies and project metadata.
+
 *   Python 3.8+
 *   `uv`: This project uses `uv` for package management. You can find installation instructions for `uv` [here](https://github.com/astral-sh/uv).
 *   **OpenAI API Key**: You need an OpenAI API key for the agents to function. Set it as an environment variable: `export OPENAI_API_KEY='your_key_here'`.
@@ -36,7 +38,11 @@ It utilizes an AI agentic workflow to refine search queries and process results.
 
 3.  **Install dependencies using `uv`:**
     ```bash
-    uv pip install -r requirements.txt
+    uv pip install .
+    ```
+    ```bash
+    # For an editable install, you can use:
+    # uv pip install -e .
     ```
 
 4.  **Run the MCP server:**

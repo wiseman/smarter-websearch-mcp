@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "general-web-search-mcp"
+version = "0.1.0"
+description = "A general-purpose web search tool using MCP and OpenAI agents."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT License"} # Or any other appropriate license
+authors = [
+  {name = "AI Agent", email = "ai.agent@example.com"}, # Placeholder author
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License", # Adjust if license is different
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+]
+
+dependencies = [
+    "openai>=1.0.0",
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "httpx",
+    "playwright",
+    "rich",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/example/general-web-search-mcp" # Placeholder URL
+"Bug Tracker" = "https://github.com/example/general-web-search-mcp/issues" # Placeholder URL
+
+# Optional: if you want to include development dependencies
+# [project.optional-dependencies]
+# dev = [
+#   "pytest",
+#   "ruff", # Example linter/formatter
+# ]

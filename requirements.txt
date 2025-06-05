@@ -1,8 +1,0 @@
-openai>=1.0.0 # For the agent SDK
-fastapi
-uvicorn[standard] # For running the ASGI server
-pydantic
-httpx # For web_search_tool
-playwright # For web_search_tool
-rich # For the printer in manager.py
-# Add any other specific versions if known, otherwise let pip resolve
