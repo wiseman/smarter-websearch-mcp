@@ -1,5 +1,5 @@
 [project]
-name = "smarter-websearch-mcp"
+name = "smarterwebsearchmcp"
 version = "0.1.0"
 dependencies = [
     "openai-agents>=0.0.17",
