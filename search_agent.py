@@ -6,14 +6,13 @@ from . import make_agent
 # Given a search term, use web search to pull back a brief summary.
 # Summaries should be concise but capture the main financial points.
 INSTRUCTIONS = (
-    "You are a research assistant specializing in financial topics. "
-    "Given a search term, use web search to retrieve up‑to‑date context and "
-    "produce a short summary of at most 300 words. Focus on key numbers, events, "
-    "or quotes that will be useful to a financial analyst."
+    "You are a research assistant. Given a search query, "
+    "use web search to retrieve relevant information and produce a concise summary of at most 300 words. "
+    "Focus on the key information that directly answers or relates to the search query."
 )
 
-search_agent = make_agent(
-    name="FinancialSearchAgent",
+web_search_agent = make_agent(
+    name="WebSearchAgent",
     instructions=INSTRUCTIONS,
     tools=[web_search_tool.search_and_get_top_url_tool],
     model_settings=ModelSettings(tool_choice="required"),

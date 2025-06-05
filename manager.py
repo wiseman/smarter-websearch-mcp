@@ -6,30 +6,18 @@ from collections.abc import Sequence
 
 from rich.console import Console
 
-from agents import Runner, RunResult, custom_span, gen_trace_id, trace
+# Attempting to import from OpenAI SDK - these are placeholders and might need adjustment
+from openai.beta.threads.agents import Runner, RunResult # Placeholder, actual might differ
+from openai.beta.threads.runs import custom_span # Placeholder
+from openai.lib.traces import gen_trace_id, trace # Placeholder
 
-from .agents.financials_agent import financials_agent
-from .agents.planner_agent import (
-    FinancialSearchItem,
-    FinancialSearchPlan,
-    planner_agent,
-)
-from .agents.risk_agent import risk_agent
-from .agents.search_agent import search_agent
-from .agents.search_critic_agent import FinanicalSearchItemCritique, search_critic_agent
-from .agents.verifier_agent import VerificationResult, verifier_agent
-from .agents.writer_agent import FinancialReportData, writer_agent
-from .printer import Printer
+from .planner_agent import SearchItem, SearchPlan, search_planner_agent
+from .search_agent import web_search_agent
+from .search_critic import SearchCritique, search_results_critic_agent
+from printer import Printer
 
 
-async def _summary_extractor(run_result: RunResult) -> str:
-    """Custom output extractor for sub‑agents that return an AnalysisSummary."""
-    # The financial/risk analyst agents emit an AnalysisSummary with a `summary` field.
-    # We want the tool call to return just that summary text so the writer can drop it inline.
-    return str(run_result.final_output.summary)
-
-
-class FinancialResearchManager:
+class WebSearchManager:
     """
     Orchestrates the full flow: planning, searching, sub‑analysis, writing, and verification.
     """
@@ -38,9 +26,9 @@ class FinancialResearchManager:
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, query: str) -> None:
+    async def run(self, query: str) -> Sequence[str]:
         trace_id = gen_trace_id()
-        with trace("Financial research trace", trace_id=trace_id):
+        with trace("Web search trace", trace_id=trace_id): # Updated trace name
             self.printer.update_item(
                 "trace_id",
                 f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
@@ -48,29 +36,21 @@ class FinancialResearchManager:
                 hide_checkmark=True,
             )
             self.printer.update_item(
-                "start", "Starting financial research...", is_done=True
+                "start", "Starting web search...", is_done=True
             )
-            search_plan = await self._plan_searches(query)
+            search_plan: SearchPlan = await self._plan_searches(query)
             search_results = await self._perform_searches(query, search_plan)
-            report = await self._write_report(query, search_results)
-            verification = await self._verify_report(report)
-
-            final_report = f"Report summary\n\n{report.short_summary}"
-            self.printer.update_item("final_report", final_report, is_done=True)
 
             self.printer.end()
 
-        # Print to stdout
-        print("\n\n=====REPORT=====\n\n")
-        print(f"Report:\n{report.markdown_report}")
-        print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
-        print("\n".join(report.follow_up_questions))
-        print("\n\n=====VERIFICATION=====\n\n")
-        print(verification)
+            print("\n\n===== SEARCH RESULTS =====\n\n")
+            for i, result_content in enumerate(search_results):
+                print(f"Result {i+1}:\n{result_content}\n---")
+            return search_results
 
-    async def _plan_searches(self, query: str) -> FinancialSearchPlan:
+    async def _plan_searches(self, query: str) -> SearchPlan:
         self.printer.update_item("planning", "Planning searches...")
-        result = await Runner.run(planner_agent, f"Query: {query}")
+        result = await Runner.run(search_planner_agent, f"Query: {query}")
         self.printer.update_item(
             "planning",
             f"Will perform {len(result.final_output.searches)} searches",
@@ -83,12 +63,12 @@ class FinancialResearchManager:
                 f"Search term: {item.query}\nReason: {item.reason}",
                 is_done=True,
             )
-        return result.final_output_as(FinancialSearchPlan)
+        return result.final_output_as(SearchPlan)
 
     async def _perform_searches(
-        self, query: str, search_plan: FinancialSearchPlan
+        self, query: str, search_plan: SearchPlan
     ) -> Sequence[str]:
-        results: list[tuple[FinancialSearchItem, str]] = []
+        results: list[tuple[SearchItem, str]] = []
         with custom_span("Search the web"):
             self.printer.update_item("searching", "Searching...")
             tasks = [
@@ -129,11 +109,11 @@ class FinancialResearchManager:
         return [search_result for (_, search_result) in results]
 
     async def _refine_search_result(
-        self, query: str, item: FinancialSearchItem, search_result: str
-    ) -> tuple[FinancialSearchItem, str] | None:
+        self, query: str, item: SearchItem, search_result: str
+    ) -> tuple[SearchItem, str] | None:
         input_data = f"Original query: {query}\nSearch terms: {item.query}\nSearch result: {search_result}"
-        result = await Runner.run(search_critic_agent, input_data)
-        critique: FinanicalSearchItemCritique = result.final_output
+        result = await Runner.run(search_results_critic_agent, input_data)
+        critique: SearchCritique = result.final_output
         if critique.is_good_enough:
             self.printer.update_item(
                 f"search_{str(item)}",
@@ -150,18 +130,18 @@ class FinancialResearchManager:
             )
             assert critique.revised_query is not None
             return await self._search(
-                FinancialSearchItem(
+                SearchItem(
                     reason=critique.critique or "No critique provided",
                     query=critique.revised_query,
                 )
             )
 
     async def _search(
-        self, item: FinancialSearchItem
-    ) -> tuple[FinancialSearchItem, str] | None:
+        self, item: SearchItem
+    ) -> tuple[SearchItem, str] | None:
         input_data = f"Search term: {item.query}\nReason: {item.reason}"
         try:
-            result = await Runner.run(search_agent, input_data)
+            result = await Runner.run(web_search_agent, input_data)
             return (item, str(result.final_output))
         except Exception as e:
             self.printer.update_item(
@@ -170,45 +150,3 @@ class FinancialResearchManager:
                 is_done=True,
             )
             return None
-
-    async def _write_report(
-        self, query: str, search_results: Sequence[str]
-    ) -> FinancialReportData:
-        # Expose the specialist analysts as tools so the writer can invoke them inline
-        # and still produce the final FinancialReportData output.
-        fundamentals_tool = financials_agent.as_tool(
-            tool_name="fundamentals_analysis",
-            tool_description="Use to get a short write‑up of key financial metrics",
-            custom_output_extractor=_summary_extractor,
-        )
-        risk_tool = risk_agent.as_tool(
-            tool_name="risk_analysis",
-            tool_description="Use to get a short write‑up of potential red flags",
-            custom_output_extractor=_summary_extractor,
-        )
-        writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
-        self.printer.update_item("writing", "Thinking about report...")
-        input_data = (
-            f"Original query: {query}\nSummarized search results: {search_results}"
-        )
-        result = Runner.run_streamed(writer_with_tools, input_data)
-        update_messages = [
-            "Planning report structure...",
-            "Writing sections...",
-            "Finalizing report...",
-        ]
-        last_update = time.time()
-        next_message = 0
-        async for _ in result.stream_events():
-            if time.time() - last_update > 5 and next_message < len(update_messages):
-                self.printer.update_item("writing", update_messages[next_message])
-                next_message += 1
-                last_update = time.time()
-        self.printer.mark_item_done("writing")
-        return result.final_output_as(FinancialReportData)
-
-    async def _verify_report(self, report: FinancialReportData) -> VerificationResult:
-        self.printer.update_item("verifying", "Verifying report...")
-        result = await Runner.run(verifier_agent, report.markdown_report)
-        self.printer.mark_item_done("verifying")
-        return result.final_output_as(VerificationResult)
