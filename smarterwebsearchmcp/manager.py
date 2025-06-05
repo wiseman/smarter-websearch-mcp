@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from collections.abc import Sequence
+from typing import Callable
 
-from rich.console import Console
 from agents import Runner, gen_trace_id, trace
+from rich.console import Console
 
 from .planner_agent import SearchItem, SearchPlan, planner_agent
 from .search_agent import search_agent
@@ -20,12 +22,12 @@ class WebSearchManager:
     async def run(self, query_instructions: str) -> None:
         trace_id = gen_trace_id()
         with trace("web search trace", trace_id=trace_id):
-            self.console.print(f"Planning searches for: {query_instructions}")
+            sys.stderr.write(f"Planning searches for: {query_instructions}")
             plan = await self._plan_searches(query_instructions)
             results = await self._perform_searches(query_instructions, plan)
 
         for item, text in results:
-            self.console.print(f"\n# {item.query}\n{text}\n")
+            sys.stderr.write(f"\n# {item.query}\n{text}\n")
 
     async def _plan_searches(self, query_instructions: str) -> SearchPlan:
         result = await Runner.run(planner_agent, f"Query: {query_instructions}")
@@ -72,5 +74,5 @@ class WebSearchManager:
             result = await Runner.run(search_agent, input_data)
             return item, str(result.final_output)
         except Exception as e:
-            self.console.print(f"Search '{item.query}' failed: {e}")
+            sys.stderr.write(f"Search '{item.query}' failed: {e}")
             return None

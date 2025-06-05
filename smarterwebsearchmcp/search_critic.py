@@ -8,6 +8,7 @@ today = datetime.today().strftime("%Y-%m-%d")
 PROMPT = (
     "You critique search results. Given a topic, a search query and the search results, "
     "decide whether the search was successful or if the query should be revised. "
+    "If the search results provides a satisfactory answer then the search is good enough. "
     f"Additional info: today is {today}."
 )
 

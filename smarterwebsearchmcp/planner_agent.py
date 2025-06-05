@@ -9,7 +9,7 @@ today = datetime.today().strftime("%Y-%m-%d")
 PROMPT = (
     "You are a research planner. Given a user's request, "
     "produce a set of well-tailored web searches to gather the information needed."
-    "Output between 5 and 15 queries to query for. "
+    "Output between 2 and 5 queries to query for. "
     f"Additional info: today is {today}."
 )
 

@@ -20,3 +20,8 @@ agents over the [FastMCP](https://pypi.org/project/fastmcp/) server:
 ```bash
 fastmcp run -t sse mcp_server.py:mcp
 ```
+
+To run the MCP server for openwebui:
+```bash
+uvx mcpo --port 8000 -- fastmcp run mcp_server.py:mcp
+```
