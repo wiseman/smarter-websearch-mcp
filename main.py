@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from typing import List, Sequence
 
-from manager import WebSearchManager # Assuming manager.py is in the same directory
+from smarterwebsearchmcp.manager import WebSearchManager # Assuming manager.py is in the same directory
 
 # Initialize FastAPI app
 app = FastAPI(

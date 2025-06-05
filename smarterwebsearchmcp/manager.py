@@ -14,7 +14,7 @@ from openai.lib.traces import gen_trace_id, trace # Placeholder
 from .planner_agent import SearchItem, SearchPlan, search_planner_agent
 from .search_agent import web_search_agent
 from .search_critic import SearchCritique, search_results_critic_agent
-from printer import Printer
+from .printer import Printer
 
 
 class WebSearchManager:

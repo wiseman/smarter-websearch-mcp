@@ -1,6 +1,6 @@
 from agents.model_settings import ModelSettings
 
-from .. import web_search_tool
+from . import web_search_tool
 from . import make_agent
 
 # Given a search term, use web search to pull back a brief summary.

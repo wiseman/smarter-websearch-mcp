@@ -43,4 +43,4 @@ dependencies = [
 # ]
 
 [tool.setuptools]
-py-modules = ["search_critic", "planner_agent", "web_search_tool", "main", "search_agent", "printer", "manager"]
+packages = ["smarterwebsearchmcp"]
