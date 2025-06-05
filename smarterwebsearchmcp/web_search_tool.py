@@ -180,7 +180,7 @@ async def get_readable_contents_of_url(url: str) -> str:
                     ).strip()
 
                     if not content:
-                        return f"URL: {url}\nTitle: {title}\n\nContent: (Readability extracted empty content)"
+                        return f"<url>{url}</url><title>{title}</title><content></content>"
                     cleaned_content = "\n".join(
                         line.strip() for line in content.splitlines()
                     )
@@ -191,7 +191,7 @@ async def get_readable_contents_of_url(url: str) -> str:
                     #    cleaned_content = cleaned_content[:MAX_LENGTH] + "... (truncated)"
 
                     output = (
-                        f"URL: {url}\nTitle: {title}\n\nContent:\n{cleaned_content}"
+                        f"<url>{url}</url><title>{title}</title><content>{cleaned_content}</content>"
                     )
                     return output
                 else:

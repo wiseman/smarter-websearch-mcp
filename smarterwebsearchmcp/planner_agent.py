@@ -8,9 +8,8 @@ today = datetime.today().strftime("%Y-%m-%d")
 # Instructions for planning generic web searches.
 PROMPT = (
     "You are a research planner. Given a user's request, "
-    "produce a set of web searches to gather the information needed. "
-    "Aim for recent articles, official sources, expert commentary, and general background. "
-    "Output between 5 and 15 search terms to query for. "
+    "produce a set of well-tailored web searches to gather the information needed."
+    "Output between 5 and 15 queries to query for. "
     f"Additional info: today is {today}."
 )
 
@@ -20,7 +19,7 @@ class SearchItem(BaseModel):
     """Your reasoning for why this search is relevant."""
 
     query: str
-    """The search term to feed into a web search."""
+    """The search term to feed into a web search engine."""
 
 
 class SearchPlan(BaseModel):
