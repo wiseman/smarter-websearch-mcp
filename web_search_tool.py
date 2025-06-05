@@ -227,14 +227,30 @@ async def search_and_get_top_url(query: str) -> str:
 
 
 # --- Example Usage (for testing) ---
-async def main():
-    import sys
+async def main() -> None:
+    import argparse
 
-    if len(sys.argv) < 2:
-        print("Usage: python web_search_tool.py <search_query>")
-        return
-    query = " ".join(sys.argv[1:])
-    print(await search_and_get_top_url(query))
+    parser = argparse.ArgumentParser(description="Simple web search utility")
+    parser.add_argument(
+        "query",
+        nargs="+",
+        help="Search query to submit",
+    )
+    parser.add_argument(
+        "--agent",
+        action="store_true",
+        help="Use the manager to orchestrate agents for the search",
+    )
+    args = parser.parse_args()
+
+    query = " ".join(args.query)
+    if args.agent:
+        from .manager import WebSearchManager
+
+        manager = WebSearchManager()
+        await manager.run(query)
+    else:
+        print(await search_and_get_top_url(query))
 
 
 if __name__ == "__main__":
