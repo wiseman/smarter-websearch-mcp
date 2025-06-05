@@ -8,13 +8,12 @@ version = "0.1.0"
 description = "A general-purpose web search tool using MCP and OpenAI agents."
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT License"} # Or any other appropriate license
+license = "MIT"
 authors = [
   {name = "AI Agent", email = "ai.agent@example.com"}, # Placeholder author
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License", # Adjust if license is different
     "Operating System :: OS Independent",
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -42,3 +41,6 @@ dependencies = [
 #   "pytest",
 #   "ruff", # Example linter/formatter
 # ]
+
+[tool.setuptools]
+py-modules = ["search_critic", "planner_agent", "web_search_tool", "main", "search_agent", "printer", "manager"]
