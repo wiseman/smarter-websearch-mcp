@@ -1,0 +1,1 @@
+# smarter-websearch-mcp
