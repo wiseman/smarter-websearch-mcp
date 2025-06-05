@@ -1,41 +1,35 @@
-# Compute today's date in YYYY-MM-DD format
 from datetime import datetime
-
 from pydantic import BaseModel
 
 from . import make_agent
 
 today = datetime.today().strftime("%Y-%m-%d")
 
-# Generate a plan of searches to ground the financial analysis.
-# For a given financial question or company, we want to search for
-# recent news, official filings, analyst commentary, and other
-# relevant background.
+# Instructions for planning generic web searches.
 PROMPT = (
-    "You are a financial research planner. Given a request for financial analysis, "
-    "produce a set of web searches to gather the context needed. Aim for recent "
-    "headlines, earnings calls or 10‑K snippets, analyst commentary, and industry background. "
+    "You are a research planner. Given a user's request, "
+    "produce a set of web searches to gather the information needed. "
+    "Aim for recent articles, official sources, expert commentary, and general background. "
     "Output between 5 and 15 search terms to query for. "
     f"Additional info: today is {today}."
 )
 
 
-class FinancialSearchItem(BaseModel):
+class SearchItem(BaseModel):
     reason: str
     """Your reasoning for why this search is relevant."""
 
     query: str
-    """The search term to feed into a web (or file) search."""
+    """The search term to feed into a web search."""
 
 
-class FinancialSearchPlan(BaseModel):
-    searches: list[FinancialSearchItem]
+class SearchPlan(BaseModel):
+    searches: list[SearchItem]
     """A list of searches to perform."""
 
 
 planner_agent = make_agent(
-    name="FinancialPlannerAgent",
+    name="SearchPlannerAgent",
     instructions=PROMPT,
-    # model="o3-mini",
-    output_type=FinancialSearchPlan,
+    output_type=SearchPlan,
 )
