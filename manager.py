@@ -17,24 +17,24 @@ class WebSearchManager:
     def __init__(self) -> None:
         self.console = Console()
 
-    async def run(self, query: str) -> None:
+    async def run(self, query_instructions: str) -> None:
         trace_id = gen_trace_id()
         with trace("web search trace", trace_id=trace_id):
-            self.console.print(f"Planning searches for: {query}")
-            plan = await self._plan_searches(query)
-            results = await self._perform_searches(query, plan)
+            self.console.print(f"Planning searches for: {query_instructions}")
+            plan = await self._plan_searches(query_instructions)
+            results = await self._perform_searches(query_instructions, plan)
 
         for item, text in results:
             self.console.print(f"\n# {item.query}\n{text}\n")
 
-    async def _plan_searches(self, query: str) -> SearchPlan:
-        result = await Runner.run(planner_agent, f"Query: {query}")
+    async def _plan_searches(self, query_instructions: str) -> SearchPlan:
+        result = await Runner.run(planner_agent, f"Query: {query_instructions}")
         return result.final_output_as(SearchPlan)
 
     async def _perform_searches(
-        self, query: str, search_plan: SearchPlan
+        self, query_instructions: str, search_plan: SearchPlan
     ) -> Sequence[tuple[SearchItem, str]]:
-        tasks = [asyncio.create_task(self._search_and_refine(query, item)) for item in search_plan.searches]
+        tasks = [asyncio.create_task(self._search_and_refine(query_instructions, item)) for item in search_plan.searches]
         results: list[tuple[SearchItem, str]] = []
         for task in asyncio.as_completed(tasks):
             res = await task

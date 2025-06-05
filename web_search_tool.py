@@ -73,10 +73,11 @@ async def search_web(query: str) -> str:
         A JSON string containing the search results.
     """
     async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+        print(f"Searching for: {query}")
         resp = await client.get(
             # My searxng instance
-            "http://localhost:8080/",
-            params={"q": query, "format": "json"},
+            "http://localhost:8080/search",
+            params={"q": query, "format": "json", "safesearch": "0"},
             headers={"Accept": "application/json"},
         )
         resp.raise_for_status()
@@ -139,6 +140,7 @@ async def get_readable_contents_of_url(url: str) -> str:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 java_script_enabled=True,
                 ignore_https_errors=True,  # Be cautious in production
+                bypass_csp=True,
             )
             page = await context.new_page()
 
